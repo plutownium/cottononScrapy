@@ -1,6 +1,7 @@
 import scrapy
 import logging
 from bs4 import BeautifulSoup
+from math import ceil
 
 logging.getLogger('scrapy').propagate = False
 
@@ -62,15 +63,17 @@ class CottononSpider(scrapy.Spider):
         """ Used when the spider lands on the first page of a product category.
         """
         # ### First thing to do is to get the # of pages in the category.
+        path_to_total_entries = "//span[@class='paging-information-items']/text()"
+        total_entries_in_category = response.xpath().extract(path_to_total_entries)[0].strip("\n").split(" ")[0]
+        print("T:", total_entries_in_category)
+        pages = ceil(total_entries_in_category / 48)
 
-
-        # product_divs is
+        # "product_divs"
         tile_path = "//div[@class='product-tile']"
         # gets between 1 and 48 SelectorLists, depending on how many products are on the page.
         product_tiles_from_the_page = response.xpath(tile_path)
         # FIXME: this naming seems wrong. it's feeding pages into the for loop, so its name should be "pages" ... and yet i was expecting tiles?
 
-        # print("63: {}, {}".format(len(product_tiles_from_the_page), type(product_tiles_from_the_page)))
         for page in product_tiles_from_the_page[0:1]:  # TODO: remove 0:3 when done developing. its just there to make things run faster
             new_products = self.convert_product_tiles_from_this_page_to_items(page)  # FIXME: this is currently printing an item that contains the name of every product on the page.
         yield None
@@ -84,14 +87,14 @@ class CottononSpider(scrapy.Spider):
 
         # 1 to 48 SelectorLists and Selectors returned
         selector_list_of_products = product_tiles_from_the_page.xpath("//li[@class='grid-tile columns']")
-        print("HEORISFSIFDNSFODNSFODSFLDSNFDSFDSFDSFDSFS", len(selector_list_of_products), type(selector_list_of_products), type(selector_list_of_products[0]))
+        # print("HEORISFSIFDNSFODNSFODSFLDSNFDSFDSFDSFDSFS", len(selector_list_of_products), type(selector_list_of_products), type(selector_list_of_products[0]))
 
         products_from_page = []
         for product in selector_list_of_products:  # fixme; remove 0:5 after dev
             # FIXME: current problem is, it seems I misunderstand something, as the selector_list_of_products var
             # ... that i expect to contain a list of products from a single page...
             # ... unleashes a list like 40 entries, only 3 of which are unique; the rest are copies. why? idgi
-            print(type(product))
+            # print(type(product))
             name = product.xpath(product_tile_path + product_name_path).extract()
             price = product.xpath(product_tile_path + product_price_path).extract()
             colors = product.xpath(product_tile_path + product_colors_path).extract()

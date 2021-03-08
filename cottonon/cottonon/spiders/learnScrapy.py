@@ -75,19 +75,23 @@ class CottononSpider(scrapy.Spider):
 
     def convert_product_tiles_from_this_page_to_items(self, product_tiles_from_the_page):
         """takes a Selector containing a product and converts it into an Item"""
+        product_tile_path = "//div[@class='product-tile']"
         product_name_path = "//div[@class='product-name']/a[@class='name-link']/text()"
         product_price_path = "//div[@class='product-pricing']/span[@class='product-sales-price']/text()"
         product_colors_path = "//div[@class='product-colors']/span[@class='product-sales-price']/text()"
 
         # 1 to 48 SelectorLists and Selectors returned
-        selector_lists_of_products = product_tiles_from_the_page.xpath("//li[@class='grid-tile columns']")
-        print("HEORISFSIFDNSFODNSFODSFLDSNFDSFDSFDSFDSFS", len(selector_lists_of_products), type(selector_lists_of_products), type(selector_lists_of_products[0]))
-        for product in selector_lists_of_products[0:3]:  # fixme; remove 0:5 after dev
+        selector_list_of_products = product_tiles_from_the_page.xpath("//li[@class='grid-tile columns']")
+        print("HEORISFSIFDNSFODNSFODSFLDSNFDSFDSFDSFDSFS", len(selector_list_of_products), type(selector_list_of_products), type(selector_list_of_products[0]))
+        for product in selector_list_of_products[0:3]:  # fixme; remove 0:5 after dev
+            # FIXME: current problem is, it seems I misunderstand something, as the selector_list_of_products var
+            # ... that i expect to contain a list of products from a single page...
+            # ... unleashes a list like 40 entries, only 3 of which are unique; the rest are copies. why? idgi
             print(type(product))
-            name = product.xpath(product_name_path).extract()
-            price = product.xpath(product_price_path).extract()
-            colors = product.xpath(product_colors_path).extract()
-            print(name,price,colors)
+            name = product.xpath(product_tile_path + product_name_path).extract()
+            price = product.xpath(product_tile_path + product_price_path).extract()
+            colors = product.xpath(product_tile_path + product_colors_path).extract()
+            print(len(name), name,price,colors)
             # soup = BeautifulSoup(product, "html.parser")
             # parent_div = soup.find("div", {"class": "product-tile"})
             # metadata_containers = parent_div.find("div", recursive=False)

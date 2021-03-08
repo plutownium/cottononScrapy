@@ -59,14 +59,16 @@ class CottononSpider(scrapy.Spider):
                     f.write("\n")
 
     def start_parsing_category(self, response):
-        """This method handles parsing at the level of product categories.
-            So when the code gets here, the code is extracting the list of products displayed on the first page
-            of the category.
+        """ Used when the spider lands on the first page of a product category.
         """
+        # ### First thing to do is to get the # of pages in the category.
+
+
         # product_divs is
         tile_path = "//div[@class='product-tile']"
         # gets between 1 and 48 SelectorLists, depending on how many products are on the page.
         product_tiles_from_the_page = response.xpath(tile_path)
+        # FIXME: this naming seems wrong. it's feeding pages into the for loop, so its name should be "pages" ... and yet i was expecting tiles?
 
         # print("63: {}, {}".format(len(product_tiles_from_the_page), type(product_tiles_from_the_page)))
         for page in product_tiles_from_the_page[0:1]:  # TODO: remove 0:3 when done developing. its just there to make things run faster
@@ -77,13 +79,15 @@ class CottononSpider(scrapy.Spider):
         """takes a Selector containing a product and converts it into an Item"""
         product_tile_path = "//div[@class='product-tile']"
         product_name_path = "//div[@class='product-name']/a[@class='name-link']/text()"
-        product_price_path = "//div[@class='product-pricing']/span[@class='product-sales-price']/text()"
-        product_colors_path = "//div[@class='product-colors']/span[@class='product-sales-price']/text()"
+        product_price_path = "//div[@class='product-pricing ']/span[@class='product-sales-price']/text()"
+        product_colors_path = "//div[@class='product-colors']/div[@class='product-colours-available']/span/text()"
 
         # 1 to 48 SelectorLists and Selectors returned
         selector_list_of_products = product_tiles_from_the_page.xpath("//li[@class='grid-tile columns']")
         print("HEORISFSIFDNSFODNSFODSFLDSNFDSFDSFDSFDSFS", len(selector_list_of_products), type(selector_list_of_products), type(selector_list_of_products[0]))
-        for product in selector_list_of_products[0:3]:  # fixme; remove 0:5 after dev
+
+        products_from_page = []
+        for product in selector_list_of_products:  # fixme; remove 0:5 after dev
             # FIXME: current problem is, it seems I misunderstand something, as the selector_list_of_products var
             # ... that i expect to contain a list of products from a single page...
             # ... unleashes a list like 40 entries, only 3 of which are unique; the rest are copies. why? idgi
@@ -91,36 +95,7 @@ class CottononSpider(scrapy.Spider):
             name = product.xpath(product_tile_path + product_name_path).extract()
             price = product.xpath(product_tile_path + product_price_path).extract()
             colors = product.xpath(product_tile_path + product_colors_path).extract()
-            print(len(name), name,price,colors)
-            # soup = BeautifulSoup(product, "html.parser")
-            # parent_div = soup.find("div", {"class": "product-tile"})
-            # metadata_containers = parent_div.find("div", recursive=False)
-            # # print(metadata_containers)
-            # name = metadata_containers.find("a", {"class": "name-link"}).text
-            # price = metadata_containers.find("span", {"class": "product-sales-price"}).text
-            # print(name, price)
+            for n, p, c in zip(name, price, colors):
+                products_from_page.append(Product(name=n, price=p, colors=c))
 
-            # print("here is p:", p)
-            # metadata_divs = print(p.xpath("//div//div[@class='product-tile']"))  # this outputs the contents of the product-tile
-            # metadata_divs = p.xpath("//div//div[@class='product-tile']")
-            # print(len(metadata_divs), metadata_divs.xpath(product_name_path).extract())
-            # name = metadata_divs.xpath()
-            
-            # x = p.xpath("//div[@class='product-name']/a[@class='name-link']/text()")
-            # print(len(x), x.extract())
-
-        # names = selector_lists_of_products.xpath().extract()  # FIXME: is 2304 long, should be 48
-        # print("PRINT SPAM", len(names), names[0], len(selector_lists_of_products), selector_lists_of_products[0])
-        # prices = selector_lists_of_products.xpath().extract()
-        # colors = selector_lists_of_products.xpath().extract()
-        # print(names)
-
-        products_from_the_page = []
-        # # print("are we here", len(names), len(prices), len(colors))
-        # for (name, price, available_colors) in zip(names, prices, colors):
-        #     # print(name, price, available_colors)
-        #     p = Product(name=name, price=price, colors=available_colors)
-        #     # print(p)
-        #     products_from_the_page.append(p)
-
-        return products_from_the_page
+        return products_from_page

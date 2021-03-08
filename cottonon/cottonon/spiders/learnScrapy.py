@@ -50,7 +50,8 @@ class CottononSpider(scrapy.Spider):
                     # https://cottonon.com/AU/women/womens-activewear/womens-running-jackets-vests/
                     for link_to_category in categories_of_products[1:]:  # TODO: 0:4 is just for dev. 0: for finished product
                         print("LINK:", link_to_category)
-                        yield scrapy.Request(link_to_category, callback=self.start_parsing_category, dont_filter=True)
+                        yield scrapy.Request(link_to_category, callback=self.start_parsing_category, dont_filter=True,
+                                             meta={"link_to_category": link_to_category})
                         exit()
 
             # output file of menu items
@@ -60,23 +61,41 @@ class CottononSpider(scrapy.Spider):
                     f.write("\n")
 
     def start_parsing_category(self, response):
-        """ Used when the spider lands on the first page of a product category.
+        """ Used when the spider lands on the page of a product category.
         """
         # ### First thing to do is to get the # of pages in the category.
+        # Note: suppose a category has 189 entries. There are 48 entries per page.
+        # 189 / 48 = 3.93. There are 4 pages. Therefore, deploy a ceil() function.
+        #
         path_to_total_entries = "//span[@class='paging-information-items']/text()"
         total_entries_in_category = response.xpath().extract(path_to_total_entries)[0].strip("\n").split(" ")[0]
         print("T:", total_entries_in_category)
         pages = ceil(total_entries_in_category / 48)
+        # assemble list of links for spider to visit
+        base_url_for_category = response.meta["link_to_category"]
+        links_to_pages_in_this_category = []
+        for page_number in range(1, pages + 1):
+            paginated_links = base_url_for_category + "?start=" + page_number * 48 + "&sz=48"
+            links_to_pages_in_this_category.append(paginated_links)
 
+        # ### Handle the first page in the category, which we are already on.
         # "product_divs"
         tile_path = "//div[@class='product-tile']"
         # gets between 1 and 48 SelectorLists, depending on how many products are on the page.
         product_tiles_from_the_page = response.xpath(tile_path)
         # FIXME: this naming seems wrong. it's feeding pages into the for loop, so its name should be "pages" ... and yet i was expecting tiles?
-
+        all_products_from_category = []
         for page in product_tiles_from_the_page[0:1]:  # TODO: remove 0:3 when done developing. its just there to make things run faster
             new_products = self.convert_product_tiles_from_this_page_to_items(page)  # FIXME: this is currently printing an item that contains the name of every product on the page.
-        yield None
+            all_products_from_category.append(new_products)
+
+        # ### send Scrapy to handle the rest of the pages in the category, sans the first page, which is done
+        # TODO: must get Scrapy to send the products from that page back to this function...
+        for remaining_link in links_to_pages_in_this_category[1:]:
+            yield scrapy.Request(remaining_link, self.parse_products_on_this_page, dont_filter=True,
+                                 meta={"past_first_page": True})
+
+        return all_products_from_category
 
     def convert_product_tiles_from_this_page_to_items(self, product_tiles_from_the_page):
         """takes a Selector containing a product and converts it into an Item"""

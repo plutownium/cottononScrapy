@@ -18,7 +18,7 @@ class Product(scrapy.Item):
     name = scrapy.Field()
     price = scrapy.Field()
     colors = scrapy.Field()
-    images = scrapy.Field()
+    img_links = scrapy.Field()
     ratings = scrapy.Field()
 
 
@@ -91,7 +91,7 @@ class CottononSpider(scrapy.Spider):
         product_tiles_from_the_page = response.xpath(tile_path)
         # FIXME: this naming seems wrong. it's feeding pages into the for loop, so its name should be "pages" ... and yet i was expecting tiles?
         for page in product_tiles_from_the_page[0:1]:  # TODO: remove 0:3 when done developing. its just there to make things run faster
-            self.convert_product_tiles_from_this_page_to_items(page, product_category=response.meta["product_category"])
+            self.convert_product_tiles_from_this_page_to_items(page, product_category=response.meta["category_name"])
             # FIXME: this is currently printing an item that contains the name of every product on the page.
 
         # ### send Scrapy to handle the rest of the pages in the category, sans the first page, which is done
@@ -157,14 +157,14 @@ class CottononSpider(scrapy.Spider):
         product_tiles_from_the_page = response.xpath(tile_path)  # fixme: again the strange "get page when expecting tiles"
         for page in product_tiles_from_the_page:
             self.convert_product_tiles_from_this_page_to_items(page,
-                                                               product_category=response.meta["product_category"],
+                                                               product_category=response.meta["category_name"],
                                                                page_num=page_num)
 
         return None
 
     def retrieve_ratings_and_images_from_product_page(self, link_to_page):
         page = requests.get(link_to_page)
-        soup = BeautifulSoup(page, "html.parser")
+        soup = BeautifulSoup(page.text, "html.parser")
 
         product_image_tags = soup.find_all("img", {"class": "primary-image"})
         srcs = []

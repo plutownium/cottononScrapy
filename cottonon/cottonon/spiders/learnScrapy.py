@@ -3,6 +3,7 @@ import logging
 from bs4 import BeautifulSoup
 from math import ceil
 import requests
+import json
 
 logging.getLogger('scrapy').propagate = False
 
@@ -53,8 +54,9 @@ class CottononSpider(scrapy.Spider):
                     # https://cottonon.com/AU/women/womens-activewear/womens-running-jackets-vests/
                     for link_to_category in categories_of_products[1:]:  # TODO: 0:4 is just for dev. 0: for finished product
                         # print("LINK:", link_to_category)
+                        category = str(link_to_category)[29:]
                         yield scrapy.Request(link_to_category, callback=self.start_parsing_category, dont_filter=True,
-                                             meta={"link_to_category": link_to_category})
+                                             meta={"link_to_category": link_to_category, "category_name": category})
                         # exit()
 
             # output file of menu items
@@ -89,10 +91,10 @@ class CottononSpider(scrapy.Spider):
         product_tiles_from_the_page = response.xpath(tile_path)
         # FIXME: this naming seems wrong. it's feeding pages into the for loop, so its name should be "pages" ... and yet i was expecting tiles?
         for page in product_tiles_from_the_page[0:1]:  # TODO: remove 0:3 when done developing. its just there to make things run faster
-            self.convert_product_tiles_from_this_page_to_items(page)  # FIXME: this is currently printing an item that contains the name of every product on the page.
+            self.convert_product_tiles_from_this_page_to_items(page, product_category=response.meta["product_category"])
+            # FIXME: this is currently printing an item that contains the name of every product on the page.
 
         # ### send Scrapy to handle the rest of the pages in the category, sans the first page, which is done
-        # TODO: must get Scrapy to send the products from that page back to this function...
         page_num = 2
         for remaining_link in links_to_pages_in_this_category[1:]:
             print(remaining_link)
@@ -102,7 +104,7 @@ class CottononSpider(scrapy.Spider):
 
         return None
 
-    def convert_product_tiles_from_this_page_to_items(self, product_tiles_from_the_page):
+    def convert_product_tiles_from_this_page_to_items(self, product_tiles_from_the_page, product_category, page_num=None):
         """takes a Selector containing a product and converts it into an Item"""
         product_tile_path = "//div[@class='product-tile']"
         product_name_path = "//div[@class='product-name']/a[@class='name-link']/text()"
@@ -130,17 +132,34 @@ class CottononSpider(scrapy.Spider):
                 products_from_page.append(Product(name=n, price=p, colors=c, img_links=imgs, ratings=ratings))
 
         # TODO: have this func end by creating a .csv with products from this page
+        # TODO: get product_category from parse and pass it on thru the functions
+        filename = product_category + "_-_" + "first_page" + ".csv"
+        if page_num:
+            filename = product_category + "_-_" + str(page_num) + ".csv"
+        with open(filename, "w") as f:
+            for product in products_from_page:
+                csv_line = product.name + "," + product.price + "," + product.colors + "," + json.dumps(product.ratings) + "," + product.images
+                f.write(csv_line)
+
         # i.e. product_category_-_product_page.csv
         return None
 
     def parse_further_pages(self, response):
+        """
+            Handles pages 2 and onward. Turns them into .csv files.
+        :param response: This is the text of the page.
+        :return: Nothing.
+        """
         print("Page num: ", response.meta["page_number"])
+        page_num = response.meta["page_number"]
         tile_path = "//div[@class='product-tile']"
         # gets between 1 and 48 SelectorLists, depending on how many products are on the page.
-        product_tiles_from_the_page = response.xpath(tile_path)
-        for page in product_tiles_from_the_page[0:1]:
-            self.convert_product_tiles_from_this_page_to_items(page)
-        # TODO: have this func end by creating a .csv with products from this page
+        product_tiles_from_the_page = response.xpath(tile_path)  # fixme: again the strange "get page when expecting tiles"
+        for page in product_tiles_from_the_page:
+            self.convert_product_tiles_from_this_page_to_items(page,
+                                                               product_category=response.meta["product_category"],
+                                                               page_num=page_num)
+
         return None
 
     def retrieve_ratings_and_images_from_product_page(self, link_to_page):

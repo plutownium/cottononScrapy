@@ -116,6 +116,10 @@ class CottononSpider(scrapy.Spider):
         selector_list_of_products = product_tiles_from_the_page.xpath("//li[@class='grid-tile columns']")
         # print("HEORISFSIFDNSFODNSFODSFLDSNFDSFDSFDSFDSFS", len(selector_list_of_products), type(selector_list_of_products), type(selector_list_of_products[0]))
 
+        current_page = "first"
+        if page_num:
+            current_page = page_num
+
         products_from_page = []
         for product in selector_list_of_products:  # fixme; remove 0:5 after dev
             # FIXME: current problem is, it seems I misunderstand something, as the selector_list_of_products var
@@ -128,20 +132,45 @@ class CottononSpider(scrapy.Spider):
             individual_page_links = product.xpath(product_tile_path + product_link_path).extract()
 
             for n, p, c, link in zip(name, price, colors, individual_page_links):
-                imgs, ratings = self.retrieve_ratings_and_images_from_product_page(link)
-                products_from_page.append(Product(name=n, price=p, colors=c, img_links=imgs, ratings=ratings))
+                self.retrieve_ratings_and_images_from_product_page_and_write_file(link, n, p, c,
+                                                                                  product_category,
+                                                                                  current_page)
+                # products_from_page.append(Product(name=n, price=p, colors=c, img_links=imgs, ratings=ratings))
 
         # TODO: have this func end by creating a .csv with products from this page
         # TODO: get product_category from parse and pass it on thru the functions
-        filename = product_category + "_-_" + "first_page" + ".csv"
-        if page_num:
-            filename = product_category + "_-_" + str(page_num) + ".csv"
-        with open(filename, "w") as f:
-            for product in products_from_page:
-                csv_line = product.name + "," + product.price + "," + product.colors + "," + json.dumps(product.ratings) + "," + product.images
-                f.write(csv_line)
+        # filename = product_category + "_-_" + "first_page" + ".csv"
+        # if page_num:
+        #     filename = product_category + "_-_" + str(page_num) + ".csv"
+        # with open(filename, "w") as f:
+        #     for product in products_from_page:
+        #         csv_line = product.name + "," + product.price + "," + product.colors + "," + json.dumps(product.ratings) + "," + product.images
+        #         f.write(csv_line)
 
         # i.e. product_category_-_product_page.csv
+        return None
+
+    def retrieve_ratings_and_images_from_product_page_and_write_file(self, link_to_page, name, price, colors, category, page_num):
+        page = requests.get(link_to_page)
+        soup = BeautifulSoup(page.text, "html.parser")
+
+        product_image_tags = soup.find_all("img", {"class": "primary-image"})
+        srcs = []
+        for img in product_image_tags:
+            srcs.append(img["src"])
+
+        ratings_divs = soup.find_all("div", {"class": "bv-inline-histogram-ratings-score"})
+        ratings = []
+        stars = 5
+        for div in ratings_divs:
+            rating = {stars: div.find("span").get_text()}
+            ratings.append(rating)
+            stars = stars - 1
+
+        filename = category.replace('/', "") + "_" +  page_num +  "_" + name.replace('\n', "") + ".csv"
+        with open(filename, "w") as f:
+            csv_line = name + "," + price + "," + "".join(json.dumps(colors)) + "," + "".join(json.dumps(ratings)) + "," + srcs
+            f.write(csv_line)
         return None
 
     def parse_further_pages(self, response):
@@ -162,21 +191,4 @@ class CottononSpider(scrapy.Spider):
 
         return None
 
-    def retrieve_ratings_and_images_from_product_page(self, link_to_page):
-        page = requests.get(link_to_page)
-        soup = BeautifulSoup(page.text, "html.parser")
 
-        product_image_tags = soup.find_all("img", {"class": "primary-image"})
-        srcs = []
-        for img in product_image_tags:
-            srcs.append(img["src"])
-
-        ratings_divs = soup.find_all("div", {"class": "bv-inline-histogram-ratings-score"})
-        ratings = []
-        stars = 5
-        for div in ratings_divs:
-            rating = {stars: div.find("span").get_text()}
-            ratings.append(rating)
-            stars = stars - 1
-
-        return srcs, ratings

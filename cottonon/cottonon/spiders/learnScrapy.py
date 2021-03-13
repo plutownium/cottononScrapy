@@ -29,41 +29,41 @@ class CottononSpider(scrapy.Spider):
         "https://cottonon.com/AU/"
     ]
 
-    def parse(self, response, get_menu_items=False, x=False):
+    def parse(self, response, get_menu_items=False):
         # print("aaaaa")
-        if not x:
-            menu_items_to_print = []
-            for menu_item in response.css('.menu-item'):
-                menu_item_to_filter = menu_item.get()
-                # print("bbbbbbbbbbbbbbb")
-                if "Women|" in menu_item_to_filter:
-                    # print("\n-------\n-------")
-                    categories_of_products = menu_item.css('a::attr(href)').getall()
 
-                    if get_menu_items:  # flag
-                        for title in menu_item.css('a::attr(data-gtag)').getall():
-                            menu_items_to_print.append(title)
+        menu_items_to_print = []
+        for menu_item in response.css('.menu-item'):
+            menu_item_to_filter = menu_item.get()
+            # print("bbbbbbbbbbbbbbb")
+            if "Women|" in menu_item_to_filter:
+                # print("\n-------\n-------")
+                categories_of_products = menu_item.css('a::attr(href)').getall()
 
-                    # print("ASDASDFDFDSFDSS", len(categories_of_products))
-                    # categories_of_products is a set of links like:
-                    # https://cottonon.com/AU/women/womens-activewear/
-                    # https://cottonon.com/AU/women/womens-activewear/womens-gym-tops/
-                    # https://cottonon.com/AU/women/womens-activewear/womens-gym-bottoms/
-                    # https://cottonon.com/AU/women/womens-activewear/womens-gym-crop-tops-bras/
-                    # https://cottonon.com/AU/women/womens-activewear/womens-gym-active-fleece/
-                    # https://cottonon.com/AU/women/womens-activewear/womens-running-jackets-vests/
-                    for link_to_category in categories_of_products[1:]:  # TODO: 0:4 is just for dev. 0: for finished product
-                        # print("LINK:", link_to_category)
-                        category = str(link_to_category)[29:]
-                        yield scrapy.Request(link_to_category, callback=self.start_parsing_category, dont_filter=True,
-                                             meta={"link_to_category": link_to_category, "category_name": category})
-                        # exit()
+                if get_menu_items:  # flag
+                    for title in menu_item.css('a::attr(data-gtag)').getall():
+                        menu_items_to_print.append(title)
 
-            # output file of menu items
-            with open("menu_items.txt", "w") as f:
-                for entry in menu_items_to_print:
-                    f.write(entry)
-                    f.write("\n")
+                # print("ASDASDFDFDSFDSS", len(categories_of_products))
+                # categories_of_products is a set of links like:
+                # https://cottonon.com/AU/women/womens-activewear/
+                # https://cottonon.com/AU/women/womens-activewear/womens-gym-tops/
+                # https://cottonon.com/AU/women/womens-activewear/womens-gym-bottoms/
+                # https://cottonon.com/AU/women/womens-activewear/womens-gym-crop-tops-bras/
+                # https://cottonon.com/AU/women/womens-activewear/womens-gym-active-fleece/
+                # https://cottonon.com/AU/women/womens-activewear/womens-running-jackets-vests/
+                for link_to_category in categories_of_products[1:]:  # TODO: 0:4 is just for dev. 0: for finished product
+                    # print("LINK:", link_to_category)
+                    category = str(link_to_category)[29:]
+                    yield scrapy.Request(link_to_category, callback=self.start_parsing_category, dont_filter=True,
+                                         meta={"link_to_category": link_to_category, "category_name": category})
+                    # exit()
+
+        # output file of menu items
+        with open("menu_items.txt", "w") as f:
+            for entry in menu_items_to_print:
+                f.write(entry)
+                f.write("\n")
 
     def start_parsing_category(self, response):
         """ Used when the spider lands on the page of a product category.

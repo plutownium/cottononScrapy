@@ -74,7 +74,7 @@ class CottononSpider(scrapy.Spider):
         #
         path_to_total_entries = "//span[@class='paging-information-items']/text()"
         total_entries_in_category = response.xpath(path_to_total_entries).extract()[0].strip("\n").split(" ")[0]
-        print("T:", total_entries_in_category)
+        # print("T:", total_entries_in_category)
         pages = ceil(int(total_entries_in_category) / 48)
         # assemble list of links for spider to visit
         base_url_for_category = response.meta["link_to_category"]
@@ -97,7 +97,7 @@ class CottononSpider(scrapy.Spider):
         # ### send Scrapy to handle the rest of the pages in the category, sans the first page, which is done
         page_num = 2
         for remaining_link in links_to_pages_in_this_category[1:]:
-            print(remaining_link)
+            # print(remaining_link)
             yield scrapy.Request(remaining_link, self.parse_further_pages, dont_filter=True,
                                  meta={"page_number": page_num})
             page_num = page_num + 1
@@ -155,6 +155,7 @@ class CottononSpider(scrapy.Spider):
         soup = BeautifulSoup(page.text, "html.parser")
 
         product_image_tags = soup.find_all("img", {"class": "primary-image"})
+
         srcs = []
         for img in product_image_tags:
             srcs.append(img["src"])
@@ -169,7 +170,7 @@ class CottononSpider(scrapy.Spider):
 
         filename = category.replace('/', "") + "_" +  page_num +  "_" + name.replace('\n', "") + ".csv"
         with open(filename, "w") as f:
-            csv_line = name + "," + price + "," + "".join(json.dumps(colors)) + "," + "".join(json.dumps(ratings)) + "," + srcs
+            csv_line = name.replace("\n", "") + "," + price + "," + "".join(json.dumps(colors)) + "," + "".join(json.dumps(ratings)) + "," + ",".join(srcs)
             f.write(csv_line)
         return None
 
@@ -179,7 +180,7 @@ class CottononSpider(scrapy.Spider):
         :param response: This is the text of the page.
         :return: Nothing.
         """
-        print("Page num: ", response.meta["page_number"])
+        # print("Page num: ", response.meta["page_number"])
         page_num = response.meta["page_number"]
         tile_path = "//div[@class='product-tile']"
         # gets between 1 and 48 SelectorLists, depending on how many products are on the page.

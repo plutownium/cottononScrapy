@@ -121,8 +121,7 @@ class CottononSpider(scrapy.Spider):
             current_page = page_num
 
         products_from_page = []
-        for product in selector_list_of_products:  # fixme; remove 0:5 after dev
-            # FIXME: current problem is, it seems I misunderstand something, as the selector_list_of_products var
+        for product in selector_list_of_products:
             # ... that i expect to contain a list of products from a single page...
             # ... unleashes a list like 40 entries, only 3 of which are unique; the rest are copies. why? idgi
             # print(type(product))
@@ -184,7 +183,7 @@ class CottononSpider(scrapy.Spider):
         page_num = response.meta["page_number"]
         tile_path = "//div[@class='product-tile']"
         # gets between 1 and 48 SelectorLists, depending on how many products are on the page.
-        product_tiles_from_the_page = response.xpath(tile_path)  # fixme: again the strange "get page when expecting tiles"
+        product_tiles_from_the_page = response.xpath(tile_path)
         for page in product_tiles_from_the_page:
             self.convert_product_tiles_from_this_page_to_items(page,
                                                                product_category=response.meta["category_name"],
